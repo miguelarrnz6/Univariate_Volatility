@@ -1,0 +1,1003 @@
+---
+title: "Univariate Volatility Models"
+author: "Miguel A. Arranz"
+date: '`r Sys.Date()`'
+output:
+  html_document: default
+  html_notebook: default
+  pdf_document: default
+  word_document: default
+---
+
+# Goals
+
+1.  We briefly describe the simplest variance models available including moving averages and the so-called RiskMetrics variance model.
+1.  We introduce the GARCH variance model and compare it with the RiskMetrics model.
+1.  We estimate the GARCH parameters using the quasi-maximum likelihood method.
+1.  We suggest extensions to the basic model, which improve the model's ability to capture variance persistence and leverage effects. We also consider ways to expand the model, taking into account explanatory variables such as volume effects, day-of-week effects, and implied volatility from options.
+1.  We discuss various methods for evaluating the volatility forecasting models.
+  
+# Volatility
+
+
+As seen earlier, financial market data often exhibits volatility
+clustering, where time series show periods of high volatility and periods of
+low volatility. In fact, with economic and financial
+data, time-varying volatility is more common than constant volatility, and
+accurate modeling of time-varying volatility is of great importance in financial
+engineering.
+
+One of the most important developments in empirical finance has been the modeling and
+forecasting of volatility. It has been spurred on by applications such as the rapid growth
+of financial derivatives, quantitative trading and risk modeling.
+
+Reliable estimations and forecasts of volatility are important for large credit
+institutes where volatility is directly used to measure risk. The risk premium,
+for example, is often specified as a function of volatility, and it is interesting
+to find an appropriate model for volatility.
+Volatility modeling is
+quite demanding because of the
+challenges posed by the presence of issues such as nonnormalities, volatility clusters and
+structural breaks.
+
+
+ARMA models are used to model the conditional
+expectation of a process given the past, but in an ARMA model the conditional
+variance given the past is constant. What does this mean for, say,
+modeling stock returns? Suppose we have noticed that recent daily returns
+have been unusually volatile. We might expect that tomorrow's return is also
+more variable than usual. However, an ARMA model cannot capture this
+type of behavior because its conditional variance is constant. So we need better
+time series models if we want to model the nonconstant volatility. 
+
+In this
+Module we look at GARCH time series models that are becoming widely used
+in econometrics and finance because they have randomly varying volatility.
+
+ARCH is an acronym meaning Auto-Regressive Conditional Heteroskedasticity.
+In ARCH models the conditional variance has a structure very similar to
+the structure of the conditional expectation in an AR model. We first study
+the first order ARCH(1) model, which is the simplest GARCH model, and
+analogous to an AR(1) model. Then we look at ARCH(p) models, which are
+analogous to AR(p) models, and GARCH (Generalized ARCH) models, which
+model conditional variances much as the conditional expectation is modeled by
+an ARMA model. 
+
+A key modeling difficulty is that market volatility is not directly observable-unlike
+market prices it is a latent variable. What we observe are the prices of an asset and its derivatives. One must estimate the
+volatility from these observed prices. 
+Volatility must therefore be inferred by looking at
+how much market prices move. If prices fluctuate a lot, we know volatility is high, but
+we cannot ascertain precisely how high. 
+
+
+Although volatility is not directly observable, it has some characteristics that are
+commonly seen in asset returns. 
+
+  First, there exist volatility clusters (i.e., volatility is high for certain time periods and low for other periods). 
+
+  Second, volatility evolves over time in a continuous manner-that is, volatility jumps are rare. 
+
+  Third, volatility does not diverge to infinity-that is, volatility varies within some fixed range.  Statistically
+speaking, this means that volatility is often stationary. 
+
+  Fourth, volatility seems to react differently to a big price increase and a big price drop with the latter having a greater impact. This phenomenon is referred to as the **leverage effect**. 
+
+These properties play
+an important role in the development of volatility models. Some volatility models
+were proposed specifically to correct the weaknesses of the existing ones for their
+inability to capture the characteristics mentioned earlier.
+
+## Kinds of Volatility
+
+**Volatility as the conditional standard deviation of daily returns**: This is the usual
+definition of volatility and is the focus of volatility models discussed in this
+chapter.
+
+**Implied volatility**: Using prices from options markets, one can use a pricing
+formula, for example, the Black-Scholes pricing formula, to deduce the volatility
+of the stock price. This volatility measure is called the implied volatility.
+Because implied volatility is derived under certain assumptions that relate the
+price of an option to that of the underlying stock, it is often criticized to be
+model dependent. Experience shows that implied volatility of an asset return
+tends to be larger than that obtained by using daily returns and a volatility
+model. This might be due to the risk premium for volatility in options markets
+or to the way daily returns are calculated. The VIX of CBOE is an implied
+volatility.
+
+**Realized volatility**: With the availability of high frequency financial data, one
+can use intraday returns, for example, 5-min returns, to estimate the daily
+volatility. This volatility measure is called realized volatility, which is a subject
+of some intensive research in recent years.
+
+
+# Measures of Volatility 
+
+Since the seminal work of Markowitz on portfolio theory, volatility has
+become an extremely important variable in finance, appearing regularly in
+models of asset pricing, portfolio theory, risk management, etc. Much of the
+interest in volatility has to do with its not being directly observable, and
+several alternative measures have been developed to approximate it empirically,
+the most common being the unconditional standard deviation of
+historical returns. Despite being convenient and simple, this measure is
+severely limited by the fact that returns are typically non-iid (independent
+and identically distributed), with distributions that are leptokurtic and
+skewed (see chapter 7). Moreover, the standard deviation may not be an
+appropriate representation of financial risk, so that some other measure
+should be used, such as the semi-variance (see the review by Nawrocki, 1999)
+or the absolute deviation (see Granger and Ding, 1995).
+
+In practice, the standard deviation is typically calculated from a sample of
+daily close-to-close logarithmic returns using theML estimator of the variance
+$$
+\hat{\sigma}_{ML}^2 = \dfrac{1}{N} \sum_{t=1}^N r_t^2
+$$
+where $r_t = p_t - p_{t-1}$ is the logarithmic return, $p_t$ the logarithm of price, and $n \geq 1$ is the sample size.
+
+A mean-adjusted estimator is easily
+obtained as
+$$
+\hat{\sigma}^2 = \dfrac{1}{n-1} \biggl( \sum_{i=1}^n r^2_t  - \dfrac{\log(p_n/p_0)^2}{n}\biggr)
+$$
+where $p_0$ and $p_n$ are the first and last price observations in the sample.
+
+The term "volatility" in finance typically corresponds to the annualised
+historical standard deviation of returns. Assuming that the underlying
+logarithmic price process is a random walk, this can be calculated by
+multiplying the standard deviation by the square root of time. This implies
+that uncertainty, or risk, as measured by volatility, increases with the square
+root of the time horizon. For example, if the standard deviation for a stock is
+estimated from historical daily returns to be 0.002, and assuming that a
+calendar year corresponds to a business year of 250 trading days, volatility
+will be 
+$$0,002 \times \sqrt{250} = 0.03162278$$ 
+i.e. 31.62 per cent. A word of caution is put forward by
+Diebold et al. (1998), who demonstrate that volatility estimates may depend
+significantly on the sampling frequency of the returns used to estimate the
+standard deviation, caused by returns not necessarily being iid.
+
+
+In addition to the historical standard deviation, several extreme value
+estimators have also been proposed. These try to improve efficiency by
+exploiting the information contained in the opening, closing, high and low
+prices during the trading day. The empirical literature has shown that, although
+extreme-value estimators generally perform well in terms of efficiency, they
+often suffer from bias when compared to the simple historical standard
+deviation approach.
+
+An interesting development in volatility measurement has been the
+emergence of the integrated or realised variance non-parametric estimator.
+This has become extremely popular over the past decade after a series of
+papers by Andersen, Bollerslev, Diebold and co-authors, and Barndorff-
+Nielsen and Shephard. For reviews of this growing literature, see Barndorff-
+Nielsen, Gravesen and Shephard (2004) and Andersen, Bollerslev and
+Diebold (2007). Realised variance, often termed realised volatility (RV),
+measures the quadratic variation of the underlying diffusion process in
+continuous time.
+
+The most fundamental feature of realized volatility is that it provides a consistent nonparametric
+estimate of the price variability that has transpired over a given discrete
+interval. Any log-price process subject to a no-arbitrage condition and weak auxiliary
+assumptions will constitute a semi-martingale that may be decomposed into a locally
+predictable mean component and a martingale with finite second moments. Within
+this class, there is a unique measure for the realized sample-path variation termed the
+quadratic variation. By construction the quadratic variation cumulates the intensity of
+the unexpected price changes over the specific horizon and it is thus a prime candidate
+for a formal volatility measure.
+
+The realized volatility is by construction an observed proxy for the underlying quadratic
+variation and the associated (measurement) errors are uncorrelated. This suggests a
+straightforward approach where the temporal features of the series are modeled through
+standard time series techniques, letting the data guide the choice of the appropriate
+distributional assumptions and the dynamic representation. This is akin to the standard
+procedure for modeling macroeconomic data where the underlying quantities are
+measured (most likely with a substantial degree of error) and then treated as directly
+observed variables.
+
+Realised variance allows us, in the continuous time limit, to approximate
+the ex post, instantaneous variance over any time interval, and to any desired
+degree of accuracy, by just sampling at sufficiently high frequencies. At first
+glance, this is a particularly powerful estimator, since it appears to be modeland
+error-free. In practice, however, only finite samples of discrete data are
+available. Sampling at very high frequencies may be possible but, unfortunately,
+may introduce several well-known microstructure biases related to,
+for example, bid-ask bounce, screen fighting, price discreteness, irregular
+spacing of quotes, illiquidity, seasonalities, etc. Empirical research has shown
+that a sampling interval of thirty minutes typically offers a good balance
+between increasing sampling frequency and reducing microstructure effects.
+RV is now widely used as a proxy for unobservable volatility to evaluate the
+performance of volatility estimators. For example, Bali and Weinbaum
+(2005) evaluate the performance of several extreme-value estimators against
+historical volatility using daily, weekly and monthly data on equities and
+exchange rates. Using RV as a proxy for unobserved volatility, they find that
+the extreme-value estimators were less biased and more efficient than the
+historical standard deviation, especially at the daily level. Moreover, the
+Garman and Klass estimator has been found to have one of the best performances
+amongst competing extreme-value estimators.
+
+Another class of estimator is based on the volatility obtained by inverting
+financial option pricing formulae using observed option prices.
+Although these implied volatility estimators
+are widely used, especially in the financial industry, they depend on the
+pricing model chosen. Moreover, they do not always provide a single volatility
+estimate across various option prices for the same asset.
+
+Implied volatility provides yet another forward looking volatility measure. Implied
+volatilities are based on the market's forecasts of future volatilities extracted from the
+prices of options written on the asset of interest. As discussed in Section 2.2.4 (Handbook of Economic Forecasting)above,
+using a specific option pricing formula, one may infer the expected integrated volatility
+of the underlying asset over the remaining time-to-maturity of the option. The main
+complication associated with the use of these procedures lies in the fact that the option
+prices also generally reflect a volatility risk premium in the realistic scenario where
+the volatility risk cannot be perfectly hedged; see, e.g., the discussion in Bollerslev and
+Zhou (2005). Nonetheless, many studies find options implied volatilities to provide useful
+information regarding the future volatility of the underlying asset. At the same time,
+the results pertaining to the forecast performance of implied volatilities are somewhat
+mixed, and there is still only limited evidence regarding the relative predictive power of
+implied volatilities versus the realized volatility procedures discussed above. Another
+issue is that many assets of interest do not have sufficiently active options markets that
+reliable implied volatilities can be computed on, say, a daily basis.
+
+A related development has been the treatment of volatility as a distinct
+asset that can be packaged in an index and traded using volatility swaps,
+futures and options. Traditionally, derivatives have allowed investors and
+firms to hedge against factors such as market, interest rate and foreign
+exchange volatility. Volatility derivatives provide protection against volatility
+risk - i.e. unexpected changes in the level of volatility itself. The first volatility
+index, the VIX (currently termed VXO), was introduced in 1993 by the
+Chicago Board Options Exchange (CBOE). Since 2003 the VIX has been
+calculated as the average implied volatility of out-of-money option prices
+across all available strikes on the S&P 500 index. Several other implied
+volatility indices, in the United States and elsewhere, have since been
+developed, with the financial press regularly quoting the VIX as an 'investor
+fear gauge'. A number of recent empirical studies have examined the
+properties of implied volatility indices. For example, Psychoyios, Dotsis and
+Markellos (2006) analyse daily data on the VIX index over a period of ten
+years and find evidence of mean reversion, heteroskedasticity and jumps.
+Although the VIX is found to be stationary, the possibility of long memory
+cannot be excluded.
+
+
+# Applications
+
+## Finance
+
+1.  Risk management: Value-at-Risk (VaR) and Expected Shortfall (ES)
+1.  Covariance risk: Time-varying betas and conditional Sharpe ratios
+1.  Asset allocation with time-varying covariances
+1.  Option valuation with dynamic volatility
+
+## Volatility forecasting in fields outside finance
+
+Although volatility modeling and forecasting has proved to be extremely useful in finance,
+the motivation behind Engle's (1982) original ARCH model was to provide a
+tool for measuring the dynamics of inflation uncertainty. Tools for modeling volatility
+dynamics have been applied in many other areas of economics and indeed in other areas
+of the social sciences, the natural sciences and even medicine. In the following we list
+a few recent papers in various fields showcasing the breath of current applications of
+volatility modeling and forecasting. It is by no means an exhaustive list but these papers
+can be consulted for further references.
+
+Related to Engle's original work, the modeling of inflation uncertainty and its relationship
+with labor market variables has recently been studied by Rich and Tracy (2004).
+They corroborate earlier findings of an inverse relationship between desired labor contract
+durations and the level of inflation uncertainty. Analyzing the inflation and output
+forecasts from the Survey of Professional Forecasters, Giordani and Soderlind (2003)
+find that while each forecaster on average tends to underestimate uncertainty, the disagreement
+between forecasters provides a reasonable proxy for inflation and output
+uncertainty. The measurement of uncertainty also plays a crucial role in many microeconomic
+models. Meghir and Pistaferri (2004), for instance, estimate the conditional
+variance of income shocks at the microlevel and find strong evidence of temporal variance
+dynamics.
+
+Lastrapes (1989) first analyzed the relationship between exchange rate volatility and
+U.S. monetary policy. In a more recent study, Ruge-Murcia (2004) developed a model of
+a central bank with asymmetric preferences for unemployment above versus below the
+natural rate. The model implies an inflation bias proportional to the conditional variance
+of unemployment. Empirically, the conditional variance of unemployment is found to
+be positively related to the rate of inflation. In another central banking application, Tse
+and Yip (2003) use volatility models to study the effect on changes in the Hong Kong
+currency board on interbank market rates.
+
+Volatility modeling and forecasting methods have also found several interesting uses
+in agricultural economics. Ramirez and Fadiga (2003), for instance, find evidence of
+asymmetric volatility patterns in U.S. soybean, sorghum and wheat prices. Building on
+the earlier volatility spill-over models used in analyzing international financial market
+linkages in the papers by Engle, Ito and Lin (1990) and King, Sentana and Wadhwani
+(1994), Buguk, Hudson and Hanson (2003) have recently used similar methods in documenting
+strong price volatility spillovers in the supply-chain of fish production. The
+volatility in feeding material prices (e.g., soybeans) affects the volatility of fish feed
+prices which in turn affect fish farm price volatility and finally wholesale price volatility.
+Also, Barrett (1999) uses a GARCH model to study the effect of real exchange rate
+depreciations on stochastic producer prices in low-income agriculture.
+
+
+The recent deregulation in the utilities sector has also prompted many new applications
+of volatility modeling of gas and power prices. Shawky, Marathe and Barrett
+(2003) use dynamic volatility models to determine the minimum variance hedge ratios
+for electricity futures. Linn and Zhu (2004) study the effect of natural gas storage report
+announcements on intraday volatility patterns in gas prices. They also find evidence of
+strong intraday patterns in natural gas price volatility. Battle and Barquin (2004) use a
+multivariate GARCH model to simulate gas and oil price paths, which in turn are shown
+to be useful for risk management in the wholesale electricity market.
+
+In a related context, Taylor and Buizza (2003) use weather forecast uncertainty to
+model electricity demand uncertainty. The variability of wind measurements is found to
+be forecastable using GARCH models in Cripps and Dunsmuir (2003), while temperature
+forecasting with seasonal volatility dynamics is explored in Campbell and Diebold
+(2005). Marinova and McAleer (2003) model volatility dynamics in ecological patents.
+
+In political science, Maestas and Preuhs (2000) suggest modeling political volatility
+broadly defined as periods of rapid and extreme change in political processes, while
+Gronke and Brehm (2002) use ARCH models to assess the dynamics of volatility in
+presidential approval ratings.
+
+Volatility forecasting has recently found applications even in medicine.
+
+# GARCH Volatility
+
+The current interest in volatility modeling and forecasting was spurred by Engle's
+(1982) path breaking ARCH paper, which set out the basic idea of modeling and forecasting
+volatility as a time-varying function of current information. The GARCH class
+of models, of which the GARCH(1, 1) remains the workhorse, were subsequently introduced
+by Bollerslev (1986), and also discussed independently by Taylor (1986). These
+models, including their use in volatility forecasting, have been extensively surveyed
+elsewhere and we will not attempt yet another exhaustive survey here. Instead we will
+try to highlight some of the key features of the models which help explain their dominant
+role in practical empirical applications. We will concentrate on univariate formulations
+in this section, with the extension to multivariate GARCH-based covariance and correlation
+forecasting discussed in Section 6 (Handbook chapter 16)
+
+## Rolling regressions and RiskMetrics
+
+Rolling sample windows arguably provides the simplest way of incorporating actual
+data into the estimation of time-varying volatilities, or variances. In particular, consider
+the rolling sample variance based on the $p$ most recent observations as of time $t$.
+
+$$
+\hat{\sigma}^2_t = p^{-1} \sum_{i=0}^{p-1} (y_{t-i} - \hat{\mu}) \equiv 
+p^{-1} \sum_{i=0}^{p-1} \hat{\varepsilon}^2_{t-i}
+$$
+
+# GARCH Familiy Models
+
+In GARCH models, the density function is usually written in terms of the
+location and scale parameters, normalized to give zero mean and  unit variance,
+
+$$
+{\alpha _t} = ({\mu_t},{\sigma_t},{\omega}),
+$$
+
+where the conditional mean is given by
+
+$$
+{\mu _t} = \mu (\theta ,{x_t}) = E({y_t}|{x_t}),
+$$
+and the conditional variance is,
+
+$$
+\sigma _t^2 = {\sigma ^2}(\theta ,{x_t}) = E({({y_t} - {\mu _t})^2}|{x_t}),
+$$
+
+with ${\omega} = \omega (\theta ,{x_t})$ denoting the remaining parameters of
+the distribution, perhaps a shape and skew parameter. 
+
+The conditional mean and
+variance are used to scale the innovations,
+
+$$
+{z_t}(\theta ) = \frac{{{y_t} - \mu (\theta ,{x_t})}}{{\sigma (\theta ,{x_t})}},
+$$
+having conditional density which may be written as,
+
+$$
+g(z|{\omega}) = \frac{d}{{dz}}P({z_t} < z|{\omega}),
+$$
+and related to $f(y|\alpha)$ by,
+$$
+f({y_t}|{\mu _t},\sigma _t^2,{\omega}) = \frac{1}{{{\sigma_t}}}g({z_t}|{\omega}).
+$$
+
+# ARCH Model
+
+The volatility is weighted average of past returns
+
+$ARCH(p)$
+
+$$
+\sigma^2_t = \omega + \sum_{j=1}^p \alpha_j \varepsilon_{t-j}^2
+$$
+The most common form is ARCH(1)
+
+$$
+\sigma^2_t = \omega + \alpha \varepsilon_t^2
+$$
+
+$\alpha$, $\omega$ are parameters to be estimated.
+
+The unconditional volatility of the ARCH(1) model is:
+$$
+V(\varepsilon_t^2) = \sigma^2 = \dfrac{\omega}{1-\alpha}
+$$
+
+To ensure positive volatility forecasts, always have to
+impose
+$$ \forall i, \quad \omega, \alpha_i > 0$$
+
+To ensure variance stationarity
+$$\sum_{j=1}^p \alpha_j < 1$$.
+
+This is not needed except in special circumstances.
+
+## Weaknesses of ARCH Models
+
+The model also has some weaknesses:
+
+  1. The model assumes that positive and negative shocks have the same effects on volatility because it depends on the square of the previous shocks. In practice, it is well known that the price of a financial asset responds differently to positive and negative shocks.
+  
+  2. The ARCH model is rather restrictive. For instance, $\alpha_1^2$ of an ARCH(1) model must be in the interval (0, 1/3) if the series has a finite fourth moment. The constraint becomes complicated for higher order ARCH models. In practice, it limits the ability of ARCH models with Gaussian innovations to capture excess kurtosis.
+  
+  3. The ARCH model does not provide any new insight for understanding the source of variations of a financial time series. It merely provides a mechanical way to describe the behavior of the conditional variance. It gives no indication about what causes such behavior to occur.
+  
+  4. ARCH models are likely to overpredict the volatility because they respond slowly to large isolated shocks to the return series.
+
+
+# GARCH Model
+
+The standard GARCH model (Bollerslev (1986)) may be written as:
+$$
+\sigma _t^2 = \left( {\omega  + \sum\limits_{j = 1}^m {{\zeta _j}{v_{jt}}} } \right) + \sum\limits_{j = 1}^q {{\alpha _j}\varepsilon _{t - j}^2 + } \sum\limits_{j = 1}^p {{\beta _j}\sigma _{t - j}^2},
+$$
+with $\sigma_t^2$ denoting the conditional variance, $\omega$ the intercept
+and $\varepsilon_t^2$ the residuals from the mean filtration process discussed
+previously. 
+
+The GARCH order is defined by $(q, p)$ (ARCH, GARCH), with possibly
+**external regressors** $v_j$ which are passed *pre-lagged*.
+
+
+Under the $GARCH(q,p)$ model, the conditional variance of $\epsilon_t$ , $\sigma^2_t$ , depends on the squared residuals in the previous s periods, and the conditional variance in the previous $t$ periods. 
+
+Usually a $GARCH(1,1)$ model
+with only three parameters in the conditional variance equation is adequate
+to obtain a good model fit for financial time series.
+
+One of the key features of the observed behavior of financial data which GARCH
+models capture is volatility clustering which may be quantified in the
+persistence parameter $\hat P$. For the 'sGARCH' model this may be calculated as,
+$$
+\hat P = \sum\limits_{j = 1}^q {{\alpha _j}}  + \sum\limits_{j = 1}^p {{\beta _j}}.
+$$
+Related to this measure is the 'half-life' (call it $h2l$) defined as the number
+of days it takes for half of the expected reversion back
+towards $E\left( {{\sigma ^2}} \right)$ to occur,
+$$
+h2l = \frac{{ - {{\log }_e}2}}{{{{\log }_e}\hat P}}.
+$$
+
+Finally, the unconditional variance of the model ${\hat \sigma }^2$, and related
+to its persistence, is,
+$$
+{{\hat \sigma }^2} = \frac{{\hat \omega }}{{1 - \hat P}},
+$$
+where $\hat \omega$ is the estimated value of the intercept from the GARCH model.
+
+The naming conventions for passing fixed or starting parameters for this model
+are:
+
+a.  ARCH(q) parameters are 'alpha1', 'alpha2', ...,
+b.  GARCH(p) parameters are 'beta1', 'beta2', ...,
+c.  variance intercept parameter is 'omega'
+d.  the external regressor parameters are 'vxreg1', 'vxreg2', ...
+
+## GARCH(1,1) Model
+
+In this case
+
+$$
+\sigma _t^2 = \omega  +  \alpha _1 \varepsilon _{t -1}^2 +  \beta _1 \sigma _{t - 1}^2,
+$$
+
+Since $E_{t-1}(\varepsilon_t^2) = \sigma^2_t$, the above equation can be rewritten as
+$$
+\varepsilon_t^2 = \omega  +  (\alpha _1 + \beta_1) \varepsilon _{t -1}^2 +  u_t - \beta _1 u _{t - 1}^2,
+$$
+which is an $ARMA(p,q)$ model with
+$u_t = \varepsilon_t^2 - E_{t-1}(\varepsilon_t^2)$
+being the white noise disturbance term.
+
+  a.  $\alpha$ is news 
+  
+  b.  $\beta$ is memory
+  
+  c.  The size of $(\alpha + \beta)$ determines how quickly the
+predictability of the process dies out:
+
+    If $(\alpha + \beta)$ is close to zero, predictability will die out very quickly
+
+    If  $(\alpha + \beta)$ is close to one, predictability will die out slowly
+
+
+Given the ARMA representation of the GARCH model, many properties of the GARCH model follow easily from those of the corresponding
+ARMA process for $\varepsilon_t^2$. 
+
+For example, for the GARCH(1,1) model to be stationary, requires that $\alpha_1 + \beta_1 < 1$.
+
+1.  this can lead to multiple parameter combinations
+1.  volatility forecasts can be non-unique
+1.  volatility forecasts can jump over time
+
+Not advisable to impose except in special circumstances.
+
+Assuming the stationarity of
+GARCH(1,1) model, the unconditional variance of $\varepsilon_t$ can be shown to be
+$$
+V(\varepsilon_t) =E(\varepsilon_t^2) = 
+\dfrac{\omega}{1 - (\alpha_1 + \beta_1)}
+$$
+
+For the general $GARCH(p.q)$, the squared residuals $\varepsilon_t^2$ behave like an $ARMA(\max(p,q), p)$ process. Covariance stationarity requires
+$$
+\sum\limits_{j = 1}^q {{\alpha _j}} + \sum\limits_{j = 1}^p {{\beta _j}} < 1,
+$$
+and the unconditional variance of $\varepsilon_t$ is
+$$
+V(\varepsilon_t) = \dfrac{\omega}
+{1-\Bigl(\sum\limits_{j = 1}^q {{\alpha _j}} + \sum\limits_{j = 1}^p {{\beta _j}} \Bigr)}
+$$
+
+**Half-life** 
+
+The number of periods, $n^\star$, it takes for conditional
+variance to revert back halfway towards unconditional
+variance
+$$
+n^\star = \dfrac{\log(1/2)}{\alpha + \beta}
+$$
+
+As $(\alpha + \beta) \rightarrow 1$, the process approaches a
+noncovariance-stationary process and the half-life
+converges to infinity.
+## Example
+
+### Fit Diagnostics
+
+(Handbook of Volatlity p60)
+After a GARCH model, for example, the standard GARCH model, has been
+estimated, it would be wise to subject it to misspecification tests to see whether
+the model adequately describes the data. In this section, we consider tests that are
+designed for alternatives that incorporate asymmetry or, more generally, missing
+exogenous variables or nonlinearity. The leading testing principle is the score
+or Lagrange multiplier principle, because then only the null model has to be
+estimated. As explained for example in Engle (1982b), these tests can be carried
+out in the so-called $TR^2$ form, and under the null hypothesis the test statistic
+has an asymptotic ??2-distribution. When the null hypothesis is the standard
+GARCH model (Eq. 2.2), the test can be carried out in stages as follows:
+
+1.  Estimate the parameters of the GARCH model (Eq. 2.2) and compute
+"the residual sum of squares" 
+$$ SSR_0 = \sum_{j=1}^T \Biggl( \dfrac{\varepsilon^2_j}{\tilde{h}_j} - 1 \Biggr)^2$$
+where $\tilde{h}_j$ is the
+estimated conditional variance at t.
+1.  Regress $\varepsilon^2_j / \tilde{h}_j$ on the gradient of the log-likelihood function and the
+new variables (assuming the component excluded under the null hypothesis
+is linear in parameters), and compute the residual sum of squares $SSR_1$ from
+this auxiliary regression.
+1.  Form the test statistic
+$$
+T \dfrac{SSR_0 - SSR_1}{SSR_0} \; \rightarrow \chi^2(m)
+$$
+under the null hypothesis of dimension $m$. When the null model
+is Equation 2.2, the gradient equals $\tilde{\mathbf{g}}_t = \tilde{h}_t (\partial h / \partial \omega)_0$, where
+$\omega = (\alpha_0, \alpha_1, \ldots, \alpha_q, \beta_1, \ldots, \beta_p)^\prime$, and
+$$
+(\partial h / \partial \omega)_0 = \tilde{\mathbf{u}}_t + \sum_{i=1}^p
+\tilde{\beta}_i (\partial h_{t-i} / \partial \omega)_0
+$$
+with $\tilde{\mathbf{u}}_t = (1, \varepsilon_{t-1}^2, \varepsilon_{t-q}^2, \tilde{h}_{t-1}, \ldots, \tilde{h}_{t-q})^\prime$. The subscript 0 indicates that
+the partial derivatives are evaluated under $H_0$. They are available from the
+estimation of the null model and need not be computed separately.
+
+The auxiliary regression is thus
+$$
+\tilde{z}_t^2 = a +\tilde{\mathbf{g}}^\prime_t \delta_0 + \mathbf{v}^\prime_t \delta_1 + \eta_t
+$$
+FINISH HANDBOOK OF VOLATILITY CHAPTER 2
+
+  
+The **signbias** calculates the Sign Bias Test of Engle & Ng (1993), and is also displayed in the summary. This tests the presence of leverage effects in the standardized residuals (to capture possible misspecification of the GARCH model), by regressing the squared standardized residuals on lagged negative and positive shocks as follows:
+
+$$
+\hat z_t^2 = {c_0} + {c_1}{I_{{{\hat \varepsilon}_{t - 1}} < 0}} +
+{c_2}{I_{{{\hat \varepsilon}_{t - 1}} < 0}}{\hat \varepsilon_{t - 1}} + {c_3}{I_{{{\hat \varepsilon}_{t - 1}} \geqslant 0}}{\hat \varepsilon_{t - 1}} + {u_t}
+$$
+
+
+
+where $I$ is the indicator function and $\hat \varepsilon_t$ the estimated residuals
+from the GARCH process. 
+
+The Null Hypotheses are $H_0:c_i=0$ (for $i=1,2,3$), and that
+jointly $H_0:c_1=c_2=c_3=0$. 
+
+The **gof** calculates the chi-squared goodness of fit test, which compares the empirical distribution of the standardized residuals with the theoretical ones from the chosen density. 
+
+The **nymblom** test calculates the parameter stability test of Nyblom (1989),
+as well as the joint test. Critical values against which to compare the results
+are displayed, but this is not available for the joint test in the case of more than 20
+parameters.
+
+Finally, some informative plots can be drawn either interactively (which = 'ask'), individually (which = 1:12) else all at once (which = 'all').
+
+## Stylized facts and the first-order GARCH model
+
+(Terasvirta chapter Handbook of Financial Time Series)
+
+As already mentioned, financial time series such as high-frequency return
+series constitute the most common field of applications for GARCH models.
+These series typically display rather high kurtosis. At the same time, the
+autocorrelations of the absolute values or squares of the observations are low
+and decay slowly. These two features are sometimes called stylized facts of
+financial time series. Granger and Ding (1995) listed a few more such features.
+Among them is the empirical observation that in a remarkable number of
+financial series, the autocorrelations of the powers of observations, $|\epsilon_t|^k$, peak
+around $k = 1$. Granger and Ding called this stylized fact the Taylor effect
+as Taylor (1986) was the first to draw attention to it (by comparing the
+autocorrelations of $\epsilon_t^2$ and $|\epsilon_t|$).
+
+One way of evaluating the adequacy of GARCH models is to ask how
+well they can be expected to capture the features or stylized facts present
+in the series to be modelled. The expressions for kurtosis and the autocorrelation
+function of absolute values and squared observations are available
+for the purpose. They allow one to find out, for example, whether or not
+a GARCH(1,1) model is capable of producing realizations with high kurtosis
+and low, slowly decaying autocorrelations. The results of Malmsten and
+Ter??svirta (2004) who have used these expressions, illustrate the well known
+fact, see, for example, Bollerslev et al. (1994), that a GARCH model with
+normally distributed errors does not seem to be a sufficiently flexible model
+for explaining these two features in financial return series.
+
+Malmsten and Ter??svirta (2004) also demonstrated how the situation can
+be improved, as is customary in practice, by replacing the normal error distribution
+by a more fat-tailed one.
+
+# Asymetric GARCH Models
+
+Although we have assumed that the distribution of $\epsilon_t$ was conditionally
+normal, this is not essential. Bollerslev (1987), for example, considers the
+case where the distribution is standardised-t with unknown degrees of
+freedom 
+ that may be estimated from the data: for 
+$\nu >2$ such a distribution
+is leptokurtic and hence has thicker tails than the normal. Other distributions
+that have been considered include the normal-Poisson mixture distribution
+(Jorion, 1988), the power exponential distribution (Baillie and
+Bollerslev, 1989), the normal-log-normal mixture (Hsieh, 1989a) and the
+generalised exponential distribution (Nelson, 1991). Estimation procedures
+have also been developed that either estimate semi-parametrically the density
+of $\epsilon_t$ (Engle and Gonzalez-Rivera, 1991) or adaptively estimate the parameters
+of ARCH models in the presence of non-normal $\epsilon_t$ (Linton, 1993).
+
+Further modifications result from allowing the relationship between $\sigma^2_t$
+and $\epsilon_t$ to be more flexible than the quadratic mapping that has so far been
+assumed. These modifications often lead to general classes of GARCH
+models that have been used to study asymptotic properties, the existence of
+moments and other time series characteristics.
+
+## Leverage Effects and Asymmetry
+
+It has been empirically noted that stock returns are sometimes negatively correlated with changes in volatility: volatility tends to rise following bad news and fall following good news. This is called the "leverage effect", as it could be explained by firms' use of leverage. The leverage effect is not easily detectable in stock indices and is not expected to be significant in foreign exchange.
+
+Consider the relationship between the stock price and volatility of a corporation that has high debt. As the stock price of the firm falls, its debt-to-equity ratio rises. This will raise equity return volatility if the firm's cash flows are constant.
+
+In this case, one might expect negative returns today to lead to higher volatility tomorrow, and vice versa for positive returns. This behavior cannot be captured by a standard GARCH(1,1) model, since from the equation, tomorrow'ss volatility is quadratic in
+today's return, and the sign of today's return does not matter. We need to introduce asymmetry to capture leverage effects (i.e., the impacts of negative and positive shocks have to be different).
+
+From an empirical point of view the volatility reacts asymmetrically
+to the sign of the shocks and therefore a number of parameterized
+extensions of the standard GARCH model have been suggested.
+
+A straightforward way to incorporate leverage effects in the GARCH model is to use the model of Glosten et al. (1993) (GJR-GARCH, also known as threshold-GARCH).
+
+Another widely used GARCH model allowing for leverage effects is the exponential GARCH (EGARCH) model proposed by Nelson (1991).
+
+## EGARCH
+
+Let $Z_t$ further denote a series of i.i.d. standardised random variables with
+expectation 0 and variance 1. The general exponential GARCH (EGARCH)
+model is given by Nelson (1991):
+$$
+\log \sigma^2_t = \omega_t + \sum_{j=1}^\infty \beta_j g(Z_{t-j}) 
+$$
+where $\omega_t$, $\beta_j$ are deterministic components, and
+$$
+g(Z_{t-j}) = \theta Z_t + \gamma (|Z_t| - E(|Z_t|))
+$$
+It can be directly seen that $E(g(Z_t)) = 0$.
+
+The EGARCH model shows some differences from the standard
+GARCH model:
+
+1. Volatility of the EGARCH model, which is measured by the conditional
+variance $\sigma^2_t$, is an explicit multiplicative function of lagged innovations.
+On the contrary, volatility of the standard GARCH model is an additive
+function of the lagged error terms $\epsilon_t$, which causes a complicated
+functional dependency on the innovations.
+1.  Volatility can react asymmetrically to the good and the bad news.
+1.  For the general distributions of $Z_t$ the parameter restrictions for strong
+and covariance-stationarity coincide.
+1.  The parameters are not restricted to positive
+values.
+
+
+The function $g(\cdot)$ is piecewise linear. It contains two parameters
+which define the 'size effect' and the 'sign effect' of the shocks on volatility.
+The first is a typical ARCH effect while the second is an asymmetrical effect,
+for example, the leverage effect. The term 
+$(|Z_t|???E|Z_t|)$ determines the size
+effect and the term $Zt$ determines the sign effect. The parameter 
+$\gamma$ is thus
+typically positive and $\theta$ is negative.
+
+
+An alternative equation, where the indicator function is
+$$
+I_t = 
+\begin{cases}
+1 & R_t < 0 \\
+0 & R_t \geq 0
+\end{cases}
+$$
+so that
+$$
+\log \sigma^2_{t+1} = \omega + \alpha (\phi R_t + \gamma [|R_t| - E(|R_t|)]) + \beta \log \sigma^2_t
+$$
+which displays the usual leverage effect if $\alpha \phi < 0$. The EGARCH model has the
+advantage that the logarithmic specification ensures that variance is always positive,
+but it has the disadvantage that the future expected variance beyond one period cannot
+be calculated analytically
+
+### Stylized facts and the first-order EGARCH model
+
+For the first-order EGARCH model, the
+decay of autocorrelations of squared observations is faster than exponential
+in the beginning before it slows down towards an exponential rate; see He et
+al. (2002). Thus it does not appear possible to use a standard EGARCH(1,1)
+model to characterize processes with very slowly decaying autocorrelations.
+Malmsten and Ter??svirta (2004) showed that the symmetric EGARCH(1,1)
+model with normal errors is not sufficiently flexible either for characterizing
+series with high kurtosis and slowly decaying autocorrelations. As in the
+standard GARCH case, assuming normal errors means that the first-order
+autocorrelation of squared observations increases quite rapidly as a function
+of kurtosis for any fixed $\beta_1$ before the increase slows down. Analogously
+to GARCH, the observed kurtosis/autocorrelation combinations cannot be
+reached by the EGARCH(1,1) model with standard normal errors. The asymmetry
+parameter is unlikely to change things much.
+
+Nelson (1991) recommended the use of the so-called Generalized Error Distribution
+(GED) for the errors. It contains the normal distribution as a special
+case but also allows heavier tails than the ones in the normal distribution.
+Nelson (1991) also pointed out that a $t$-distribution for the errors may imply
+infinite unconditional variance for $\left\{\epsilon_t\right\}$. As in the case of the GARCH(1,1)
+model, an error distribution with fatter tails than the normal one helps to
+increase the kurtosis and, at the same time, lower the autocorrelations of
+squared observations or absolute values.
+
+## The Generalized Error Distribution
+
+The Generalized Error Distribution (GED) is a 3 parameter distribution belonging
+to the exponential family with conditional density given by,
+\begin{equation}\label{eq:ged1}
+f\left( x \right) = \frac{{\kappa {e^{ - 0.5{{\left| {\frac{{x - \alpha }}
+{\beta }} \right|}^\kappa }}}}}
+{{{2^{1 + {\kappa ^{ - 1}}}}\beta \Gamma \left( {{\kappa ^{ - 1}}} \right)}}
+\end{equation}
+with $\alpha$, $\beta$ and $\kappa$ representing the location, scale and
+shape parameters. Since the distribution is symmetric and unimodal the location
+parameter is also the mode, median and mean of the distribution (i.e. $\mu$).
+By symmetry, all odd moments beyond the mean are zero. The variance and kurtosis
+are given by,
+\begin{equation}\label{eq:ged2}
+\begin{gathered}
+  Var\left( x \right) = {\beta ^2}{2^{2/\kappa }}\frac{{\Gamma \left( {3{\kappa ^{ - 1}}} \right)}}
+{{\Gamma \left( {{\kappa ^{ - 1}}} \right)}} \hfill \\
+  Ku\left( x \right) = \frac{{\Gamma \left( {5{\kappa ^{ - 1}}} \right)\Gamma \left( {{\kappa ^{ - 1}}} \right)}}
+{{\Gamma \left( {3{\kappa ^{ - 1}}} \right)\Gamma \left( {3{\kappa ^{ - 1}}} \right)}} \hfill \\
+\end{gathered}
+\end{equation}
+As $\kappa$ decreases the density gets flatter and flatter while in the limit as
+$\kappa  \to \infty$, the distribution tends towards the uniform. Special cases
+are the Normal when $\kappa=2$, the Laplace when $\kappa=1$. Standardization is
+simple and involves rescaling the density to have unit standard deviation:
+\begin{equation}\label{eq:ged3}
+\begin{gathered}
+  Var\left( x \right) = {\beta ^2}{2^{2/\kappa }}\frac{{\Gamma \left( {3{\kappa ^{ - 1}}} \right)}}
+{{\Gamma \left( {{\kappa ^{ - 1}}} \right)}} = 1 \hfill \\
+  \therefore \beta  = \sqrt {{2^{ - 2/\kappa }}\frac{{\Gamma \left( {{\kappa ^{ - 1}}} \right)}}
+{{\Gamma \left( {3{\kappa ^{ - 1}}} \right)}}}  \hfill \\
+\end{gathered}
+\end{equation}
+Finally, substituting into the scaled density of $z$:
+\begin{equation}\label{eq:ged3}
+f\left( {\frac{{x - \mu }}
+{\sigma }} \right) = \frac{1}
+{\sigma }f\left( z \right) = \frac{1}
+{\sigma }\frac{{\kappa {e^{ - 0.5{{\left| {\sqrt {{2^{ - 2/\kappa }}\frac{{\Gamma \left( {{\kappa ^{ - 1}}} \right)}}
+{{\Gamma \left( {3{\kappa ^{ - 1}}} \right)}}} z} \right|}^\kappa }}}}}
+{{\sqrt {{2^{ - 2/\kappa }}\frac{{\Gamma \left( {{\kappa ^{ - 1}}} \right)}}
+{{\Gamma \left( {3{\kappa ^{ - 1}}} \right)}}} {2^{1 + {\kappa ^{ - 1}}}}\Gamma \left( {{\kappa ^{ - 1}}} \right)}}
+\end{equation}
+
+
+## GJR-GARCH
+
+The GJR GARCH model of Glosten(1993) models positive and negative shocks on
+the conditional variance asymmetrically via the use of the indicator function $I$,
+
+$$
+\sigma _t^2 = \left( {\omega  + \sum\limits_{j = 1}^m {{\zeta _j}{v_{jt}}} } \right) + \sum\limits_{j = 1}^q {\left( {{\alpha _j}\varepsilon _{t - j}^2 + {\gamma _j}{{I}_{t - j}}\varepsilon _{t - j}^2} \right) + } \sum\limits_{j = 1}^p {{\beta _j}\sigma _{t - j}^2},
+$$
+where $\gamma_j$ now represents the 'leverage' term. The indicator function $I$
+takes on value of 1 for $\varepsilon \le 0$ and 0 otherwise. Because of the
+presence of the indicator function, the persistence of the model now crucially
+depends on the asymmetry of the conditional distribution used. The persistence
+of the model $\hat P$ is,
+$$
+\hat P = \sum\limits_{j = 1}^q {{\alpha _j}}  + \sum\limits_{j = 1}^p {{\beta _j} + } \sum\limits_{j = 1}^q {{\gamma _j}\kappa },
+$$
+where $\kappa$ is the expected value of the standardized residuals $z_t$ below
+zero (effectively the probability of being below zero),
+$$
+\kappa  = E\left[ {{I_{t - j}}z_{t - j}^2} \right] = \int\limits_{ - \infty }^0 {f\left( {z,0,1,...} \right)dz}
+$$
+where $f$ is the standardized conditional density with any additional skew and
+shape parameters $(\dots)$. In the case of symmetric distributions the value of
+$\kappa$ is simply equal to $0.5$. The variance targeting, half-life and
+unconditional variance follow from the persistence parameter and are calculated
+as in Section \ref{section:sgarch}.
+The naming conventions for passing fixed or starting parameters for this model
+are:
+
+1.  ARCH(q) parameters are 'alpha1', 'alpha2', ...,
+1.  Leverage(q) parameters are 'gamma1', 'gamma2', ...,
+1.  GARCH(p) parameters are 'beta1', 'beta2', ...,
+1.  variance intercept parameter is 'omega'
+1.  the external regressor parameters are 'vxreg1', 'vxreg2', ...,
+
+Note that the Leverage parameter follows the order of the ARCH parameter.
+
+Another way to express it is with the equation
+$$
+\sigma^2_{t+1} = \omega + \alpha R_t^2 + \alpha \theta I_t R_t^2 + \beta \sigma^2
+$$
+Thus, a $\theta$ larger than zero will capture the leverage effect
+
+## APARCH
+
+The asymmetric power ARCH model of Ding(1993) allows for both leverage and
+the Taylor effect, named after Taylor(1986} who observed that the sample
+autocorrelation of absolute returns was usually larger than that of squared
+returns.
+$$
+\sigma _t^\delta  = \left( {\omega  + \sum\limits_{j = 1}^m {{\zeta _j}{v_{jt}}} } \right) + \sum\limits_{j = 1}^q {{\alpha _j}{{\left( {\left| {{\varepsilon _{t - j}}} \right| - {\gamma _j}{\varepsilon _{t - j}}} \right)}^\delta } + } \sum\limits_{j = 1}^p {{\beta _j}\sigma _{t - j}^\delta }
+$$
+where $\delta  \in {\mathbb{R}^ + }$, being a Box-Cox transformation of $\sigma_t$,
+and $\gamma_j$ the coefficient in the leverage term. Various submodels arise
+from this model:
+
+1. The simple GARCH model of Bollerslev(1986) when $\delta=2$ and $\gamma_j=0$.
+1.  The Absolute Value GARCH (AVGARCH) model of Taylor(1986) and Schwert(1990) when $\delta=1$ and $\gamma_j=0$.
+1.  The GJR GARCH (GJRGARCH) model of Glosten(1993) when $\delta=2$.
+1.  The Threshold GARCH (TGARCH) model of Zakoian(1994) when $\delta=1$.
+1.  The Nonlinear ARCH model of Higgins(1992) when $\gamma_j=0$ and $\beta_j=0$.
+1.  The Log ARCH model of Geweke(1986) and Pantula(1986) when $\delta  \to 0$.
+
+The persistence of the model is given by,
+$$
+\hat P = \sum\limits_{j = 1}^p {{\beta_j} + } \sum\limits_{j = 1}^q {{\alpha_j}} {\kappa_j}
+$$
+where $\kappa_j$ is the expected value of the standardized residuals $z_t$ under
+the Box-Cox transformation of the term which includes the leverage coefficient
+$\gamma_j$,
+$$
+\kappa_j  = E{\left( {\left| z \right| - {\gamma _j}z} \right)^\delta } = \int\limits_{ - \infty }^\infty  {{{\left( {\left| z \right| - {\gamma _j}z} \right)}^\delta }f\left( {z,0,1,...} \right)dz}
+$$
+If variance targeting is used, then $\omega$ is replaced by,
+$$
+{{\bar \sigma }^\delta }\left( {1 - \hat P} \right) - \sum\limits_{j = 1}^m {{\zeta _j}{{\bar v}_j}}.
+$$
+Finally, the unconditional variance of the model ${\hat \sigma }^2$ is,
+$$
+{{\hat \sigma }^2} = {\left( {\frac{{\hat \omega }}{{1 - \hat P}}} \right)^{2/\delta }}
+$$
+where $\hat \omega$ is the estimated value of the intercept from the GARCH model.
+The half-life follows from the persistence parameter and is calculated as in
+Section \ref{section:sgarch}. The naming conventions for passing fixed or
+starting parameters for this model are:
+
+1.  ARCH(q) parameters are 'alpha1', 'alpha2', ...,
+1.  Leverage(q) parameters are 'gamma1', 'gamma2', ...,
+1.  Power parameter is 'delta',
+1.  GARCH(p) parameters are 'beta1', 'beta2', ...,
+1.  variance intercept parameter is 'omega'
+1.  the external regressor parameters are 'vxreg1', 'vxreg2', ...,
+
+In particular, to obtain any of the submodels simply pass the appropriate
+parameters as fixed.
+
+
+## Comparing EGARCH with GARCH
+
+## GARCH-in-mean model
+
+GARCH models are often used for predicting the risk of a portfolio at a
+given point of time. From this it follows that the GARCH type conditional
+variance could be useful as a representation of the time-varying risk premium
+in explaining excess returns, that is, returns compared to the return of a
+riskless asset. An excess return would be a combination of the unforecastable
+difference $\varepsilon_t$ between the ex ante and ex post rates of return and a function
+of the conditional variance of the portfolio. Thus, if $y_t$ is the excess return at
+time $t$,
+$$
+y_t = \varepsilon_t + \beta + g(h_t) - Eg(h_t)
+$$
+where $h_t$ is defined as a GARCH process (4) and $g(h_t)$ is a positive-valued
+function. Engle et al. (1987) originally defined $g(h_t) = \delta h_t^{1/2}$, $\delta > 0$ which corresponds
+to the assumption that changes in the conditional standard deviation
+appear less than proportionally in the mean. The alternative $g(h_t) = \delta h_t$ has also appeared in the literature. Equations (31) and (4) form the GARCHin-
+mean or GARCH-M model. It has been quite frequently applied in the
+applied econometrics and finance literature. Glosten et al. (1993) developed
+their asymmetric GARCH model as a generalization of the GARCH-M model.
+
+The GARCH-M process has an interesting moment structure. Assume that
+$E z_t^3=0$ and $E \varepsilon^4 < \infty$. From the formula, we can see that the $k$-th order covariance is
+$$
+E[(y_t - E y_t) (y_{t-k} - E y_y)] = E[\varepsilon_{t-k} g(h_t)] + cov(g(h_{t-k}), g(h_t)) \neq 0.
+$$
+This means that there is forecastable structure in $y_t$, which may contradict
+some economic theory if yt is a return series. Hong (1991) showed this in
+a special case where $g(h_t) = \delta h_t$, $E \varepsilon_t^4 < \infty$, and $h_t$ follows a $GARCH(p,q)$ model. In that situation, all autocorrelations of $y_t$ are nonzero. Furthermore
+$$
+E(y_t - E y_t)^3 = 3 E h_t \{ g(h_t) - E g(h_t) \} + E \{ g(h_t) - E g(h_t) \}^3 \neq 0 
+$$
+It follows from (32) that a GARCH-M model implies postulating a skewed
+marginal distribution for $y_t$ unless $g(h_t) \equiv$ constant. For example, if 
+$g(h_t) = \delta h^{1/2}_t$, $\delta < 0$, this marginal distribution is negatively skewed. If the model
+builder is not prepared to make this assumption or the one of forecastable
+structure in yt, the GARCH-M model, despite its theoretical motivation,
+does not seem an appropriate alternative to use. For more discussion of this
+situation, see He et al. (2006).
+
+
+# Forecasting
+
+## GARCH and forecasts for the conditional mean
+
+Zivot 5
+
+## Models
+
+
+## Simulation-based forecasts
+
+The forecasted volatility can be used together with forecasted series values to
+generate confidence intervals of the forecasted series values. In many cases,
+the forecasted volatility is of central interest, and confidence intervals for the
+forecasted volatility can be obtained as well. However, analytic formulas for
+confidence intervals of forecasted volatility are only known for some special
+cases (see Baillie and Bollerslev (1992)). In models for which analytic formulas
+for confidence intervals are not known, a simulation-based method can be
+used to obtain confidence intervals for forecasted volatility from any GARCH
+that can be simulated. To obtain volatility forecasts from a fitted GARCH
+model, simply simulate $\sigma^2_{T+k}$
+from the last observation of the fitted model.
+This process can be repeated many times to obtain an "ensemble" of volatility
+forecasts. The point forecast of $\sigma^2_{T+k}$ may then be computed by averaging
+over the simulations, and a 95% confidence interval may be computed using
+the 2.5% and 97.5% quantiles of the simulation distribution, respectively
+
+## Forecasting the volatility of multiperiod returns
+
+## Evaluation of Individual Forecasts
+
+## Forecast Comparison
